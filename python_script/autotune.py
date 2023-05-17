@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-from functools import partial
 from pathlib import Path
 import argparse
 import librosa
@@ -54,11 +53,10 @@ def closest_pitch_from_scale(f0, scale, filter = False):
     # Convert to Hz.
     return librosa.midi_to_hz(midi_note)
 
-def moving_average_filter(signal, window_size=512):
 
+def moving_average_filter(signal, window_size=512):
     return sig.fftconvolve(signal, np.ones(window_size) / window_size, mode='same')
-    
-# sig.fftconvolve
+
 
 # Estimate fundamental frequency using FFT
 def estimate_fundamental_frequency(signal, sample_rate, previous_res, fmin, fmax):
@@ -111,7 +109,6 @@ def estimate_fundamental_frequencies(audio, sr, hop_length, fmin, fmax):
     return f0
 
 
-
 def aclosest_pitch_from_scale(f0, scale, filter = 0):
     """Map each pitch in the f0 array to the closest pitch belonging to the given scale."""
     sanitized_pitch = np.zeros_like(f0)
@@ -130,38 +127,26 @@ def aclosest_pitch_from_scale(f0, scale, filter = 0):
     return smoothed_sanitized_pitch
 
 
-def autotune(audio, sr, correction_function,scale,  plot=False):
+def autotune(audio, sr, correction_function, scale, plot, smoothing):
     # Set some basis parameters.
     frame_length = 2048
     hop_length = frame_length // 4
     fmin = librosa.note_to_hz('C2')
     fmax = librosa.note_to_hz('C5')
 
-    # Pitch tracking using the PYIN algorithm.
-    f00, voiced_flag, voiced_probabilities = librosa.pyin(audio,
-                                                         frame_length=frame_length,
-                                                         hop_length=hop_length,
-                                                         sr=sr,
-                                                         fmin=fmin,
-                                                         fmax=fmax)
-    # print(f0)
-    # f00, voiced_flag0, voiced_probabilities0 = librosa.pyin(audio,
+    # # Pitch tracking using the PYIN algorithm.
+    # f00, voiced_flag, voiced_probabilities = librosa.pyin(audio,
     #                                                      frame_length=frame_length,
     #                                                      hop_length=hop_length,
     #                                                      sr=sr,
     #                                                      fmin=fmin,
-                                                        #  fmax=librosa.note_to_hz('C7'))
+    #                                                      fmax=fmax)
+
     f0 = estimate_fundamental_frequencies(audio, sr, hop_length, fmin, fmax)
 
     f0 = np.array(f0)
     # # Apply the chosen adjustment strategy to the pitch.
-    corrected_f0_median = correction_function(f0, scale, 1)
-    corrected_f0_moving = correction_function(f0, scale, 2)
-    corrected_f0_simple = correction_function(f0, scale, 0) 
-
-    corrected_f00_median = correction_function(f00, scale, 1)
-    corrected_f00_moving = correction_function(f00, scale, 2)
-    corrected_f00_simple = correction_function(f00, scale, 0) 
+    corrected_f0_median = correction_function(f0, scale, smoothing)
     if plot:
         # Plot the spectrogram, overlaid with the original pitch trajectory and the adjusted
         # pitch trajectory.
@@ -201,19 +186,8 @@ def autotune(audio, sr, correction_function,scale,  plot=False):
     return psola.vocode(audio, sample_rate=int(sr), target_pitch=corrected_f0_moving, fmin=fmin, fmax=fmax)
 
 
-def main():
-    # Parse the command line arguments.
-    ap = argparse.ArgumentParser()
-    ap.add_argument('vocals_file')
-    ap.add_argument('--plot', '-p', action='store_true', default=False,
-                    help='if set, will produce a plot of the results')
-    ap.add_argument('--correction-method', '-c', choices=['closest', 'scale'], default='closest')
-    ap.add_argument('--scale', '-s', type=str, help='see librosa.key_to_degrees;'
-                                                    ' used only for the \"scale\" correction'
-                                                    ' method')
-    args = ap.parse_args()
-    
-    filepath = Path(args.vocals_file)
+def main(filepath, smoothing, plot=False, write=True, scale="D:min"):
+    filepath = Path(filepath)
 
     # Load the audio file.
     y, sr = librosa.load(str(filepath), sr=None, mono=False)
@@ -222,22 +196,14 @@ def main():
     if y.ndim > 1:
         y = y[0, :]
 
-    # # Pick the pitch adjustment strategy according to the arguments.
-    correction_function = closest_pitch if args.correction_method == 'closest' else \
-        aclosest_pitch_from_scale
+    pitch_corrected_y = autotune(y, sr, closest_pitch, scale, plot, int(smoothing))
 
-    # if args.correction_method == 'closest':
-    #     correction_function = closest_pitch()
-    # else:
-    #     correction_function = partial(aclosest_pitch_from_scale(), scale=args.scale)
-    # Perform the auto-tuning.
-    pitch_corrected_y = autotune(y, sr, correction_function,"D:min", args.plot)
+    if write:
+        # Write the corrected audio to an output file.
+        filepath = filepath.parent / (filepath.stem + '_pitch_corrected' + filepath.suffix)
+        sf.write(str(filepath), pitch_corrected_y, int(sr))
 
-    # Write the corrected audio to an output file.
-    filepath = filepath.parent / (filepath.stem + '_pitch_corrected' + filepath.suffix)
-    sf.write(str(filepath), pitch_corrected_y, sr)
 
-    
-if __name__=='__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
     

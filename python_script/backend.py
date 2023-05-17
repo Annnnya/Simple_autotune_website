@@ -3,12 +3,14 @@ import base64
 from flask import Flask, jsonify, request
 import os
 from flask_cors import CORS
+from pathlib import Path
+from autotune import main
 
 app = Flask(__name__)
 
 CORS(app)
-
 CORS(app, origins=['http://localhost:3000'])
+
 
 @app.route('/api/process-audio', methods=['POST'])
 def process_audio():
@@ -38,13 +40,16 @@ def process_audio():
     file_path = os.path.join(folder_path, filename)
     file.save(file_path)
 
-    # TODO: Process the audio file here using your audio processing code
+    # Process audio
+    main(file_path, smoothing=1)
+    filepath = Path(file_path)
+    file_path = filepath.parent / (filepath.stem + '_pitch_corrected' + filepath.suffix)
 
     # Return the processed audio file as base64-encoded data
     with open(file_path, 'rb') as f:
         data = base64.b64encode(f.read()).decode('utf-8')
     return jsonify({'audioData': data})
 
+
 if __name__ == '__main__':
     app.run(debug=True)
-
