@@ -146,22 +146,21 @@ def autotune(audio, sr, correction_function, scale, plot, smoothing):
 
     f0 = np.array(f0)
     # # Apply the chosen adjustment strategy to the pitch.
-    corrected_f0_median = correction_function(f0, scale, smoothing)
+    corrected_f0 = correction_function(f0, scale, smoothing)
+
     if plot:
         # Plot the spectrogram, overlaid with the original pitch trajectory and the adjusted
         # pitch trajectory.
         stft = librosa.stft(audio, n_fft=frame_length, hop_length=hop_length)
         time_points = librosa.times_like(stft, sr=sr, hop_length=hop_length)
         log_stft = librosa.amplitude_to_db(np.abs(stft), ref=np.max)
-        
+
         # ax = plt.plot()
         plt.figure(1)
         # img = librosa.display.specshow(log_stft, x_axis='time', y_axis='log', ax=ax, sr=sr, hop_length=hop_length, fmin=fmin, fmax=8000)
         # fig.colorbar(img, ax=ax, format="%+2.f dB")
         plt.plot(time_points, f0, label='fft original pitch', color='cyan', linewidth=2)
-        plt.plot(time_points, corrected_f0_median, label='fft corrected pitch with median smoothing', color='orange', linewidth=1)
-        plt.plot(time_points, corrected_f0_simple, label='fft corrected pitch simple', color='red', linewidth=1)
-        plt.plot(time_points, corrected_f0_moving, label='fft corrected pitch with moving average', color='green', linewidth=1)
+        plt.plot(time_points, corrected_f0, label='fft corrected pitch', color='orange', linewidth=1)
         plt.legend(loc='lower right')
         plt.ylabel('Frequency [Hz]')
         plt.xlabel('Time [M:SS]')
@@ -169,21 +168,7 @@ def autotune(audio, sr, correction_function, scale, plot, smoothing):
         plt.savefig('pitch_correctionfft.png', dpi=300, bbox_inches='tight')
         plt.show()
 
-        plt.figure(2)
-        plt.plot(time_points, f00, label='yin original pitch', color='cyan', linewidth=2)
-        plt.plot(time_points, corrected_f00_simple, label='yin corrected pitch simple', color='red', linewidth=1)
-        plt.plot(time_points, corrected_f00_median, label='yin corrected pitch wirh median smoothing', color='orange', linewidth=1)
-        plt.plot(time_points, corrected_f00_moving, label='yin corrected pitch with moving average', color='green', linewidth=1)
-        
-        plt.legend(loc='lower right')
-        plt.ylabel('Frequency [Hz]')
-        plt.xlabel('Time [M:SS]')
-        plt.title("Corrected speach of male short sounds by yin")
-        plt.savefig('pitch_correctionf.png', dpi=300, bbox_inches='tight')
-        plt.show()
-
-    # Pitch-shifting using the PSOLA algorithm.
-    return psola.vocode(audio, sample_rate=int(sr), target_pitch=corrected_f0_moving, fmin=fmin, fmax=fmax)
+    return psola.vocode(audio, sample_rate=int(sr), target_pitch=corrected_f0, fmin=fmin, fmax=fmax)
 
 
 def main(filepath, smoothing, plot=False, write=True, scale="D:min"):
