@@ -109,7 +109,7 @@ def estimate_fundamental_frequencies(audio, sr, hop_length, fmin, fmax):
     return f0
 
 
-def aclosest_pitch_from_scale(f0, scale, filter = 0):
+def aclosest_pitch_from_scale(f0, scale, filter=0):
     """Map each pitch in the f0 array to the closest pitch belonging to the given scale."""
     sanitized_pitch = np.zeros_like(f0)
     for i in np.arange(f0.shape[0]):
@@ -127,7 +127,7 @@ def aclosest_pitch_from_scale(f0, scale, filter = 0):
     return smoothed_sanitized_pitch
 
 
-def autotune(audio, sr, correction_function, scale, plot, smoothing):
+def autotune(audio, sr, correction_option, scale, plot, smoothing):
     # Set some basis parameters.
     frame_length = 2048
     hop_length = frame_length // 4
@@ -146,7 +146,11 @@ def autotune(audio, sr, correction_function, scale, plot, smoothing):
 
     f0 = np.array(f0)
     # # Apply the chosen adjustment strategy to the pitch.
-    corrected_f0 = correction_function(f0, scale, smoothing)
+
+    if correction_option == 1:
+        corrected_f0 = closest_pitch(f0)
+    else:
+        corrected_f0 = aclosest_pitch_from_scale(f0, scale, smoothing)
 
     if plot:
         # Plot the spectrogram, overlaid with the original pitch trajectory and the adjusted
@@ -171,7 +175,7 @@ def autotune(audio, sr, correction_function, scale, plot, smoothing):
     return psola.vocode(audio, sample_rate=int(sr), target_pitch=corrected_f0, fmin=fmin, fmax=fmax)
 
 
-def main(filepath, smoothing, plot=False, write=True, scale="D:min"):
+def main(filepath, smoothing, correction_option, plot=False, write=True, scale="D:min"):
     filepath = Path(filepath)
 
     # Load the audio file.
@@ -181,7 +185,7 @@ def main(filepath, smoothing, plot=False, write=True, scale="D:min"):
     if y.ndim > 1:
         y = y[0, :]
 
-    pitch_corrected_y = autotune(y, sr, closest_pitch, scale, plot, int(smoothing))
+    pitch_corrected_y = autotune(y, sr, correction_option, scale, plot, int(smoothing))
 
     if write:
         # Write the corrected audio to an output file.

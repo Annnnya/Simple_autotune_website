@@ -239,9 +239,9 @@ def process_audio():
     # TODO: Process the audio file here using your audio processing code
     # def main(filepath, smoothing, plot=False, write=True, scale="D:min"):
     if correction_option == "1":
-        main(file_path, int(smoothing_option))
+        main(file_path, int(smoothing_option), int(correction_option))
     else:
-        main(file_path, int(smoothing_option), scale=key)
+        main(file_path, int(smoothing_option), int(correction_option), scale=key)
     filepath = Path(file_path)
     file_path = filepath.parent / (filepath.stem + '_pitch_corrected' + filepath.suffix)
 
